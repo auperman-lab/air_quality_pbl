@@ -1,0 +1,11 @@
+{
+    "name": "Morse_code",
+    "version": "1.0.0",
+    "description": "A simple service trat transforms strings to morse code blinking",
+    "authors": [
+        {
+            "name": "Danu Macrii"
+        }
+    ],
+    "dependencies": {}
+}

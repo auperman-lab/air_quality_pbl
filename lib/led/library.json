@@ -1,0 +1,11 @@
+{
+    "name": "Led",
+    "version": "1.0.0",
+    "description": "A simple LED control library",
+    "authors": [
+        {
+            "name": "Danu Macrii"
+        }
+    ],
+    "dependencies": {}
+}
