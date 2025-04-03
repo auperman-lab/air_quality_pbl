@@ -1,0 +1,11 @@
+{
+    "name": "Humiture",
+    "version": "1.0.0",
+    "description": "Reader for AHT22 and maybe AHT11 sensor",
+    "authors": [
+        {
+            "name": "Danu Macrii"
+        }
+    ],
+    "dependencies": {}
+}
