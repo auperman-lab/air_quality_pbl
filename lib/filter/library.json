@@ -1,0 +1,11 @@
+{
+    "name": "filter-serv",
+    "version": "1.0.0",
+    "description": "Simple filters for data",
+    "authors": [
+        {
+            "name": "Danu Macrii"
+        }
+    ],
+    "dependencies": {}
+}
