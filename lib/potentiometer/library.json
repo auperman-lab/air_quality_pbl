@@ -1,0 +1,11 @@
+{
+    "name": "potentiometer",
+    "version": "1.0.0",
+    "description": "A simple service that reads potentiometer",
+    "authors": [
+        {
+            "name": "Danu Macrii"
+        }
+    ],
+    "dependencies": {}
+}
