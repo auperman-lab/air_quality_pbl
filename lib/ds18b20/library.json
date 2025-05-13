@@ -1,0 +1,11 @@
+{
+    "name": "DS18B20",
+    "version": "1.0.0",
+    "description": "Reader for DS18B20  sensor",
+    "authors": [
+        {
+            "name": "Danu Macrii"
+        }
+    ],
+    "dependencies": {}
+}
