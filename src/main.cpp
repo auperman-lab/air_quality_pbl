@@ -1,57 +1,47 @@
 #include <Arduino.h>
-#include <GyverPID.h>
-#include "led.h"
-#include "morse_code.h"
-#include "humiture.h"
-#include "ds18b20.h"
-#include "lcd_i2c.h"
-#include "relay.h"
-#include "salt_pepper.h"
-#include "wma.h"
-#include "motor.h"
-#include "potentiometer.h"
+#include "config.h"
+#include <window.h>
+#include <humidifier.h>
+#include <env_sensor.h>
+#include <network_manager.h>
+#include "air_control.h"
 
-LCDService lcd;
-//sda a4
-//scl a5
+NetworkManager netmgr(BLYNK_AUTH, WIFI_SSID, WIFI_PASS);
+WindowDriver windowDrv(
+    PIN_MAIN_OPEN, PIN_MAIN_CLOSE,
+    PIN_HAND_OPEN, PIN_HAND_CLOSE,
+    PIN_END_MAIN_O, PIN_END_MAIN_C,
+    PIN_END_HAND_O, PIN_END_HAND_C,
+    TIME_OPEN_MAIN, TIME_OPEN_HANDLE);
+HumidifierDriver humidifier(PIN_HUMIDIFIER);
+EnvSensor envSensor(PIN_DHT_DATA);
+AirControlService airService(windowDrv, humidifier, envSensor, 40.0f, 60.0f);
 
-Relay relay(7);
-Humiture dht(6);
-Potentiometer potentiometer(2);
-// Motor motor(6,5);
+void setup()
+{
+  Serial.begin(115200);
+  windowDrv.begin();
+  humidifier.begin();
+  envSensor.begin();
+  netmgr.begin();
+  airService.begin();
 
-// SaltPepperFilter temp_filter;
-// WeightedMovingAverageFilter temp_filter_second_stage;
-int hyster = 1;
-
-
-float hum;
-float temp;
-float pot;
-
-// GyverPID setup: (Kp, Ki, Kd, direction = DIRECT)
-GyverPID pid(2.0, 5.0, 1.0);
-
-double input, setpoint, output;
-
-
-void setup() {
-  Serial.begin(9600);
-  Serial.println("Hello Humiture");
-  lcd.init();
-  lcd.clear();
-  potentiometer.begin();
+  netmgr.timer().setInterval(60 * 1000L, []()
+                             { airService.update(); });
 }
 
-
+void loop()
+{
+  netmgr.run();
+}
 // lab 5.2
 
 // void loop (){
 //   temp = dht.getTemperature();
 //   pot = potentiometer.readMappedFloat(10.0, 30.0);
-//   char tempStr[10]; 
+//   char tempStr[10];
 //   dtostrf(temp, 3, 1, tempStr);
-//   char potStr[10]; 
+//   char potStr[10];
 //   dtostrf(pot, 3, 1, potStr);
 
 //   pid.input = temp;
@@ -64,7 +54,7 @@ void setup() {
 //   } else {
 //     relay.off();
 //   }
-  
+
 //   Serial.print("Temp Sensor :");
 //   Serial.println(temp);
 //   Serial.print("Relay state:");
@@ -77,23 +67,20 @@ void setup() {
 
 //   printf("Temp:%sC\nPot:%sC", tempStr, potStr);
 
-
 //   delay(1000);
 //   lcd.clear();
 // }
 
-
-
-//lab 5.1
+// lab 5.1
 
 // void loop (){
 //   temp = dht.getTemperature();
 //   pot = potentiometer.readMappedFloat(10.0, 30.0);
-//   char tempStr[10]; 
+//   char tempStr[10];
 //   dtostrf(temp, 3, 1, tempStr);
-//   char potStr[10]; 
+//   char potStr[10];
 //   dtostrf(pot, 3, 1, potStr);
-  
+
 //   Serial.print("Temp Sensor :");
 //   Serial.println(temp);
 //   Serial.print("Relay state:");
@@ -108,19 +95,17 @@ void setup() {
 //     relay.on();
 //   }else if(temp > (pot+hyster)){
 //     relay.off();
-//   } 
-
+//   }
 
 //   delay(1000);
 //   lcd.clear();
 // }
 
-
-//lab 4.2
-// void loop() {
-//   if (Serial.available() > 0) {
-//     read = Serial.readString();
-//     read.trim(); // remove leading/trailing whitespace
+// lab 4.2
+//  void loop() {
+//    if (Serial.available() > 0) {
+//      read = Serial.readString();
+//      read.trim(); // remove leading/trailing whitespace
 
 //     Serial.println(read);
 
@@ -162,53 +147,50 @@ void setup() {
 //   delay(200); // optional throttle
 // }
 
-
-
 // lab 4.1
 
 // void loop(){
 //   printf("Relay : %s\n", relay.isOn() ? "is On" : "is Off");
 
 //   if (Serial.available() > 0) {
-//     read = Serial.readString(); 
+//     read = Serial.readString();
 
 //     if (read.equals("relay on")) {
 //       relay.on();
 //       printf("Relay : %s\nRelay cmd on", relay.isOn() ? "is On" : "is Off");
-//       delay(1000); 
+//       delay(1000);
 
 //     } else if (read.equals("relay off")) {
 //       relay.off();
 //       printf("Relay : %s\nRelay cmd off", relay.isOn() ? "is On" : "is Off");
-//       delay(1000); 
+//       delay(1000);
 //     } else {
 //       printf("Relay : %s\nRelay cmd unknown", relay.isOn() ? "is On" : "is Off");
-//       delay(1000); 
+//       delay(1000);
 //     }
-    
-//     Serial.println(read);  
+
+//     Serial.println(read);
 //   }
 
-//   delay(1000); 
+//   delay(1000);
 //   lcd.clear();
 // }
-
 
 // lab 3.1
 // void loop() {
 //   hum = dht.getHumidity();
 //   temp = dht.getTemperature();
 
-//   char tempStr[10]; 
-//   char humStr[10];  
+//   char tempStr[10];
+//   char humStr[10];
 
 //   dtostrf(temp, 3, 1, tempStr);
-//   dtostrf(hum, 3, 1, humStr);    
+//   dtostrf(hum, 3, 1, humStr);
 
 //   if(hum > 70){
 
 //   }
-  
+
 //   printf("Temp:%sC\nHum:%s", tempStr, humStr);
 
 //   Serial.print("DHT22 =>");
@@ -223,7 +205,6 @@ void setup() {
 //   lcd.clear();
 // }
 
-
 // lab 3.2
 // void loop() {
 //   hum = dht.getHumidity();
@@ -234,12 +215,12 @@ void setup() {
 
 //   temp = filteredTemp;
 
-//   char tempStr[10]; 
-//   char humStr[10];  
+//   char tempStr[10];
+//   char humStr[10];
 
 //   dtostrf(temp, 3, 1, tempStr);
-//   dtostrf(hum, 3, 1, humStr);    
-  
+//   dtostrf(hum, 3, 1, humStr);
+
 //   printf("Temp:%sC\nHum:%s", tempStr, humStr);
 
 //   Serial.print("DHT22 =>");
@@ -255,6 +236,5 @@ void setup() {
 //   delay(1*1000);
 
 //   lcd.clear();
-
 
 // }
