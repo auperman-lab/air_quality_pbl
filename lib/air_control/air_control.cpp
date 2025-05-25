@@ -1,5 +1,6 @@
 #include "air_control.h"
 #include <BlynkSimpleEsp8266.h>
+#include <ESP8266HTTPClient.h>
 
 AirControlService::AirControlService(WindowDriver &wd,
                                      HumidifierDriver &hd,
@@ -15,9 +16,21 @@ void AirControlService::begin()
     // no initialization needed
 }
 
+void sendToServer(const String &deviceId, float hum, float temp)
+{
+    HTTPClient http;
+    http.begin("http://localhost:3000/api/readings");
+    http.addHeader("Content-Type", "application/json");
+    String payload = String("{\"deviceId\":\"") + deviceId + "\"," + "\"humidity\": " + String(hum) + "," + "\"temperature\": " + String(temp) + "}";
+    int code = http.POST(payload);
+    Serial.println(code > 0 ? "Posted, code: " + String(code) : "Post failed");
+    http.end();
+}
+
 void AirControlService::update()
 {
     float h = _sensor.readHumidity();
+    float t = _sensor.readTemperature();
     Blynk.virtualWrite(V2, h);
 
     if (h < _lowThreshold)
@@ -30,4 +43,6 @@ void AirControlService::update()
         _humidifier.turnOff();
         _window.closeToPercent(0.0f);
     }
+
+    sendToServer("d1_mini", h, t);
 }
