@@ -1,260 +1,169 @@
 #include <Arduino.h>
-#include <GyverPID.h>
-#include "led.h"
-#include "morse_code.h"
-#include "humiture.h"
-#include "ds18b20.h"
-#include "lcd_i2c.h"
-#include "relay.h"
-#include "salt_pepper.h"
-#include "wma.h"
-#include "motor.h"
-#include "potentiometer.h"
+#include <ESP8266WiFi.h>
 
-LCDService lcd;
-//sda a4
-//scl a5
+const int HALL_SENSOR_1_PIN = D1;
+const int HALL_SENSOR_2_PIN = D2;
+const int HALL_SENSOR_3_PIN = D6;
+const int HALL_SENSOR_4_PIN = RX;
 
-Relay relay(7);
-Humiture dht(6);
-Potentiometer potentiometer(2);
-// Motor motor(6,5);
+// // Motor control pins
+const int MOTOR1_IN1_PIN = D5;    // Connected to L298N IN1 for Motor 1
+const int MOTOR1_IN2_PIN = D4;    // Connected to L298N IN2 for Motor 1
+const int MOTOR2_IN1_PIN = D7;    // Connected to L298N IN3 for Motor 2
+const int MOTOR2_IN2_PIN = D8; // Connected to L298N IN4 for Motor 2 (GPIO10)
 
-// SaltPepperFilter temp_filter;
-// WeightedMovingAverageFilter temp_filter_second_stage;
-int hyster = 1;
+#define BLYNK_TEMPLATE_ID "TMPL4UfN9BxZg"
+#define BLYNK_TEMPLATE_NAME "wemostest"
+#define BLYNK_AUTH_TOKEN "CM3k4BaH2pDS0wvRxtgLYS3GXOCKSjqB"
 
+#include <BlynkSimpleEsp8266.h>
+#include <WidgetTerminal.h>
 
-float hum;
-float temp;
-float pot;
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "MTC-k9pn";
+char pass[] = "gZSpR9t3";
 
-// GyverPID setup: (Kp, Ki, Kd, direction = DIRECT)
-GyverPID pid(2.0, 5.0, 1.0);
+WidgetTerminal terminal(V5);
 
-double input, setpoint, output;
-
-
-void setup() {
-  Serial.begin(9600);
-  Serial.println("Hello Humiture");
-  lcd.init();
-  lcd.clear();
-  potentiometer.begin();
+// Functions to control Motor 1
+void motor1Forward() {
+  digitalWrite(MOTOR1_IN1_PIN, HIGH);
+  digitalWrite(MOTOR1_IN2_PIN, LOW);
+  terminal.println("Motor 1: FORWARD");
+  terminal.flush();
 }
 
+void motor1Reverse() {
+  digitalWrite(MOTOR1_IN1_PIN, LOW);
+  digitalWrite(MOTOR1_IN2_PIN, HIGH);
+  terminal.println("Motor 1: REVERSE");
+  terminal.flush();
+}
 
-// lab 5.2
+void motor1Stop() {
+  digitalWrite(MOTOR1_IN1_PIN, LOW);
+  digitalWrite(MOTOR1_IN2_PIN, LOW);
+  terminal.println("Motor 1: STOP");
+  terminal.flush();
+}
 
-// void loop (){
-//   temp = dht.getTemperature();
-//   pot = potentiometer.readMappedFloat(10.0, 30.0);
-//   char tempStr[10]; 
-//   dtostrf(temp, 3, 1, tempStr);
-//   char potStr[10]; 
-//   dtostrf(pot, 3, 1, potStr);
+// Functions to control Motor 2
+void motor2Forward() {
+  digitalWrite(MOTOR2_IN1_PIN, HIGH);
+  digitalWrite(MOTOR2_IN2_PIN, LOW);
+  terminal.println("Motor 2: FORWARD");
+  terminal.flush();
+}
 
-//   pid.input = temp;
-//   pid.setpoint = pot;
+void motor2Reverse() {
+  digitalWrite(MOTOR2_IN1_PIN, LOW);
+  digitalWrite(MOTOR2_IN2_PIN, HIGH);
+  terminal.println("Motor 2: REVERSE");
+  terminal.flush();
+}
 
-//   float pidOutput = pid.getResult();  // calculate PID output
+void motor2Stop() {
+  digitalWrite(MOTOR2_IN1_PIN, LOW);
+  digitalWrite(MOTOR2_IN2_PIN, LOW);
+  terminal.println("Motor 2: STOP");
+  terminal.flush();
+}
 
-//   if (pidOutput > 128) {
-//     relay.on();
-//   } else {
-//     relay.off();
-//   }
-  
-//   Serial.print("Temp Sensor :");
-//   Serial.println(temp);
-//   Serial.print("Relay state:");
-//   Serial.println(relay.isOn());
-//   Serial.print("Potentiometer Value (10 ~ 30): ");
-//   Serial.println(pot);
-//   Serial.print("PID Output: ");
-//   Serial.println(pidOutput);
-//   Serial.println();
+// Blynk callback for Motor 1 control (Virtual Pin V6)
+BLYNK_WRITE(V6) {
+  int controlValue = param.asInt();
+  if (controlValue == 1) {
+    motor1Forward();
+  } else if (controlValue == 2) {
+    motor1Reverse();
+  } else { // controlValue == 0 or any other value
+    motor1Stop();
+  }
+}
 
-//   printf("Temp:%sC\nPot:%sC", tempStr, potStr);
+// Blynk callback for Motor 2 control (Virtual Pin V7)
+BLYNK_WRITE(V7) {
+  int controlValue = param.asInt();
+  if (controlValue == 1) {
+    motor2Forward();
+  } else if (controlValue == 2) {
+    motor2Reverse();
+  } else { // controlValue == 0 or any other value
+    motor2Stop();
+  }
+}
 
+void setup() {
+  Serial.begin(115200);
 
-//   delay(1000);
-//   lcd.clear();
-// }
+  while (!Serial) {
+  }
 
+  Serial.println("\n--- Wemos D1 Mini Hall Sensor & Motor Reader ---");
+  terminal.println("\n--- Wemos D1 Mini Hall Sensor & Motor Reader ---");
 
+  Serial.println("Initializing sensors and motors...");
+  terminal.println("Initializing sensors and motors...");
 
-//lab 5.1
+  pinMode(HALL_SENSOR_1_PIN, INPUT_PULLUP);
+  pinMode(HALL_SENSOR_2_PIN, INPUT_PULLUP);
+  pinMode(HALL_SENSOR_3_PIN, INPUT_PULLUP);
+  pinMode(HALL_SENSOR_4_PIN, INPUT_PULLUP);
 
-// void loop (){
-//   temp = dht.getTemperature();
-//   pot = potentiometer.readMappedFloat(10.0, 30.0);
-//   char tempStr[10]; 
-//   dtostrf(temp, 3, 1, tempStr);
-//   char potStr[10]; 
-//   dtostrf(pot, 3, 1, potStr);
-  
-//   Serial.print("Temp Sensor :");
-//   Serial.println(temp);
-//   Serial.print("Relay state:");
-//   Serial.println(relay.isOn());
-//   Serial.print("Potentiometer Value (10 ~ 30): ");
-//   Serial.println(pot);
-//   Serial.println();
+  // Set motor control pins as OUTPUT
+  pinMode(MOTOR1_IN1_PIN, OUTPUT);
+  pinMode(MOTOR1_IN2_PIN, OUTPUT);
+  pinMode(MOTOR2_IN1_PIN, OUTPUT);
+  pinMode(MOTOR2_IN2_PIN, OUTPUT);
 
-//   printf("Temp:%sC\nPot:%sC", tempStr, potStr);
+  // Ensure motors are stopped at startup
+  motor1Stop();
+  motor2Stop();
 
-//   if(temp < (pot-hyster)){
-//     relay.on();
-//   }else if(temp > (pot+hyster)){
-//     relay.off();
-//   } 
+  terminal.clear();
+  terminal.flush();
 
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(ssid);
+  terminal.print("Connecting to WiFi: ");
+  terminal.println(ssid);
 
-//   delay(1000);
-//   lcd.clear();
-// }
+  Blynk.begin(auth, ssid, pass);
 
+  Serial.println("All initialized. Reading data and ready for motor control...");
+  terminal.println("All initialized. Reading data and ready for motor control...");
+  terminal.flush();
+}
 
-//lab 4.2
-// void loop() {
-//   if (Serial.available() > 0) {
-//     read = Serial.readString();
-//     read.trim(); // remove leading/trailing whitespace
+void loop() {
+  Blynk.run();
 
-//     Serial.println(read);
+  int sensor1State = digitalRead(HALL_SENSOR_1_PIN);
+  int sensor2State = digitalRead(HALL_SENSOR_2_PIN);
+  int sensor3State = digitalRead(HALL_SENSOR_3_PIN);
+  int sensor4State = digitalRead(HALL_SENSOR_4_PIN);
 
-//     if (read.startsWith("motor set")) {
-//       int value = read.substring(10).toInt();
-//       motor.setSpeed(value);
-//       Serial.print("Motor power set to: ");
-//       Serial.println(value);
+  Blynk.virtualWrite(V0, sensor1State);
+  Blynk.virtualWrite(V1, sensor2State);
+  Blynk.virtualWrite(V2, sensor3State);
+  Blynk.virtualWrite(V3, sensor4State);
 
-//     } else if (read.equals("motor stop")) {
-//       motor.stop();
-//       Serial.println("Motor stopped");
+  String outputString = "";
+  outputString += "S1 (D1/GPIO5): ";
+  outputString += (sensor1State == LOW ? "DETECTED " : "NO_DETECTION ");
 
-//     } else if (read.equals("motor max")) {
-//       int8_t current = motor.getSpeed();
-//       int8_t maxVal = current >= 0 ? 100 : -100;
-//       motor.setSpeed(maxVal);
-//       Serial.print("Motor set to max: ");
-//       Serial.println(maxVal);
+  outputString += "| S2 (D2/GPIO4): ";
+  outputString += (sensor2State == LOW ? "DETECTED " : "NO_DETECTION ");
 
-//     } else if (read.equals("motor inc")) {
-//       motor.inc(10);
-//       Serial.print("Motor increased to: ");
-//       Serial.println(motor.getSpeed());
+  outputString += "| S3 (D6/GPIO12): ";
+  outputString += (sensor3State == LOW ? "DETECTED " : "NO_DETECTION ");
 
-//     } else if (read.equals("motor dec")) {
-//       motor.dec(10);
-//       Serial.print("Motor decreased to: ");
-//       Serial.println(motor.getSpeed());
+  outputString += "| S4 (RX/GPIO3): ";
+  outputString += (sensor4State == LOW ? "DETECTED" : "NO_DETECTION");
 
-//     } else {
-//       Serial.println("Unknown command");
-//     }
+  Serial.println(outputString);
+  // terminal.println(outputString);
+  // terminal.flush();
 
-//     Serial.print("Current motor speed: ");
-//     Serial.println(motor.getSpeed());
-//   }
-
-//   delay(200); // optional throttle
-// }
-
-
-
-// lab 4.1
-
-// void loop(){
-//   printf("Relay : %s\n", relay.isOn() ? "is On" : "is Off");
-
-//   if (Serial.available() > 0) {
-//     read = Serial.readString(); 
-
-//     if (read.equals("relay on")) {
-//       relay.on();
-//       printf("Relay : %s\nRelay cmd on", relay.isOn() ? "is On" : "is Off");
-//       delay(1000); 
-
-//     } else if (read.equals("relay off")) {
-//       relay.off();
-//       printf("Relay : %s\nRelay cmd off", relay.isOn() ? "is On" : "is Off");
-//       delay(1000); 
-//     } else {
-//       printf("Relay : %s\nRelay cmd unknown", relay.isOn() ? "is On" : "is Off");
-//       delay(1000); 
-//     }
-    
-//     Serial.println(read);  
-//   }
-
-//   delay(1000); 
-//   lcd.clear();
-// }
-
-
-// lab 3.1
-// void loop() {
-//   hum = dht.getHumidity();
-//   temp = dht.getTemperature();
-
-//   char tempStr[10]; 
-//   char humStr[10];  
-
-//   dtostrf(temp, 3, 1, tempStr);
-//   dtostrf(hum, 3, 1, humStr);    
-
-//   if(hum > 70){
-
-//   }
-  
-//   printf("Temp:%sC\nHum:%s", tempStr, humStr);
-
-//   Serial.print("DHT22 =>");
-//   Serial.print("Humidity ");
-//   Serial.print(hum);
-//   Serial.print(" % (error=> 2-5%), Temp: ");
-//   Serial.print(temp);
-//   Serial.println(" Celsius (error=> ±0.5°C)");
-
-//   delay(1*1000);
-
-//   lcd.clear();
-// }
-
-
-// lab 3.2
-// void loop() {
-//   hum = dht.getHumidity();
-//   float rawtemp = dht.getTemperature();
-
-//   float filteredTemp = temp_filter.apply(rawtemp);
-//   filteredTemp = temp_filter_second_stage.apply(filteredTemp);
-
-//   temp = filteredTemp;
-
-//   char tempStr[10]; 
-//   char humStr[10];  
-
-//   dtostrf(temp, 3, 1, tempStr);
-//   dtostrf(hum, 3, 1, humStr);    
-  
-//   printf("Temp:%sC\nHum:%s", tempStr, humStr);
-
-//   Serial.print("DHT22 =>");
-//   Serial.print("Humidity ");
-//   Serial.print(hum);
-//   Serial.print(" % (error=> 2-5%)\nFiltered Temp: ");
-//   Serial.print(temp);
-//   Serial.print(" Celsius (error=> ±0.5°C)");
-//   Serial.print("\nRaw Temp: ");
-//   Serial.print(rawtemp);
-//   Serial.println(" Celsius (error=> ±0.5°C)\n");
-
-//   delay(1*1000);
-
-//   lcd.clear();
-
-
-// }
+  delay(1000);
+}
