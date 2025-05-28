@@ -7,7 +7,7 @@
 #define BLYNK_TEMPLATE_NAME "Air Sensors"
 #define BLYNK_AUTH_TOKEN    "E9i5BTPbRLAv4dCXbt3J8Zj_TDGJXDoj"   
 
-char ssid[] = "MTC_k9pn";    
+char ssid[] = "MTC-k9pn";    
 char pass[] = "gZSpR9t3"; 
 
 #include <BlynkSimpleEsp8266.h>
@@ -42,12 +42,12 @@ void sendSensorData() {
     Serial.print("AQI: ");      Serial.println(currentAQI);
 
     if (Blynk.connected()) {
-        Blynk.virtualWrite(V5, currentTemperature);
-        Blynk.virtualWrite(V6, currentHumidity);
-        Blynk.virtualWrite(V7, currentTVOC);
-        Blynk.virtualWrite(V8, currentECO2);
-        Blynk.virtualWrite(V9, currentAQI);
-        Serial.println("Data sent to Blynk.");
+        // Blynk.virtualWrite(V5, currentTemperature);
+        // Blynk.virtualWrite(V6, currentHumidity);
+        // Blynk.virtualWrite(V7, currentTVOC);
+        // Blynk.virtualWrite(V8, currentECO2);
+        // Blynk.virtualWrite(V9, currentAQI);
+        // Serial.println("Data sent to Blynk."); 
     } else {
         Serial.println("Blynk not connected. Data not sent.");
     }
@@ -64,7 +64,7 @@ BLYNK_CONNECTED() {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
     delay(100);
     Serial.println("\nStarting Air Quality Monitor...");
 
@@ -75,7 +75,12 @@ void setup() {
         }
     }
 
+    Serial.println("\nStarting blynk");
+
+
     Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+    Serial.println("\nConnected to blynk");
 
     
 
