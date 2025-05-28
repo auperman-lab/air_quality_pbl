@@ -15,33 +15,262 @@ LCDService lcd;
 //sda a4
 //scl a5
 
-Relay relay(7);
-Humiture dht(6);
-Potentiometer potentiometer(2);
+
+//lab 6.2
+
+#define EW_RED_PIN    2
+#define EW_YELLOW_PIN 3
+#define EW_GREEN_PIN  4
+
+// North-South Traffic Light
+#define NS_RED_PIN    5
+#define NS_YELLOW_PIN 6
+#define NS_GREEN_PIN  7
+
+// Potentiometer for "request" simulation
+#define POTENTIOMETER_PIN A0
+
+// Global Objects
+// East-West LEDs
+Led ewRed(EW_RED_PIN);
+Led ewYellow(EW_YELLOW_PIN);
+Led ewGreen(EW_GREEN_PIN);
+
+// North-South LEDs
+Led nsRed(NS_RED_PIN);
+Led nsYellow(NS_YELLOW_PIN);
+Led nsGreen(NS_GREEN_PIN);
+
+Potentiometer requestPotentiometer(POTENTIOMETER_PIN);
+
+typedef enum {
+    RED,
+    YELLOW,
+    GREEN
+} TrafficLightState;
+
+TrafficLightState ewState = GREEN; // East-West starts green (priority)
+TrafficLightState nsState = RED;   // North-South starts red
+
+unsigned long ewLastStateChangeTime = 0;
+unsigned long nsLastStateChangeTime = 0;
+unsigned long potentiometerLastReadTime = 0;
+
+const unsigned long GREEN_LIGHT_DELAY_MS = 5000;  // 5 seconds
+const unsigned long YELLOW_LIGHT_DELAY_MS = 2000; // 2 seconds
+const unsigned long RED_LIGHT_DELAY_MS = 1000;    // 1 second (minimal, before next green)
+
+volatile bool nsRequestActive = false;
+const int REQUEST_THRESHOLD = 50; // Potentiometer value threshold (0-100 mapped)
+
+void updateTrafficLightLEDs(TrafficLightState ew, TrafficLightState ns) {
+    // East-West LEDs
+    ewRed.off();
+    ewYellow.off();
+    ewGreen.off();
+    if (ew == GREEN) ewGreen.on();
+    else if (ew == YELLOW) ewYellow.on();
+    else ewRed.on();
+
+    // North-South LEDs
+    nsRed.off();
+    nsYellow.off();
+    nsGreen.off();
+    if (ns == GREEN) nsGreen.on();
+    else if (ns == YELLOW) nsYellow.on();
+    else nsRed.on();
+}
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("Smart Traffic Light System Starting...");
+
+    requestPotentiometer.begin();
+
+    // Set initial state and update LEDs
+    ewState = GREEN;
+    nsState = RED;
+    updateTrafficLightLEDs(ewState, nsState);
+    ewLastStateChangeTime = millis();
+    nsLastStateChangeTime = millis();
+    potentiometerLastReadTime = millis();
+
+    Serial.println("Initial State: EW_GREEN, NS_RED");
+}
+
+void loop() {
+    unsigned long currentTime = millis();
+
+    // Read potentiometer periodically
+    if (currentTime - potentiometerLastReadTime >= 50) { // Read every 50ms
+        int potValue = requestPotentiometer.readMapped(0, 100);
+        if (potValue > REQUEST_THRESHOLD) {
+            nsRequestActive = true;
+        } else {
+            nsRequestActive = false;
+        }
+        potentiometerLastReadTime = currentTime;
+    }
+
+    // East-West Traffic Light Logic
+    if (ewState == GREEN) {
+        if (nsRequestActive && (currentTime - ewLastStateChangeTime >= GREEN_LIGHT_DELAY_MS)) {
+            ewState = YELLOW;
+            updateTrafficLightLEDs(ewState, nsState);
+            ewLastStateChangeTime = currentTime;
+            Serial.println("Transition: EW_GREEN -> EW_YELLOW");
+        }
+    } else if (ewState == YELLOW) {
+        if (currentTime - ewLastStateChangeTime >= YELLOW_LIGHT_DELAY_MS) {
+            ewState = RED;
+            updateTrafficLightLEDs(ewState, nsState);
+            ewLastStateChangeTime = currentTime;
+            Serial.println("Transition: EW_YELLOW -> EW_RED");
+        }
+    } else if (ewState == RED) {
+        if (nsState == RED && (currentTime - ewLastStateChangeTime >= RED_LIGHT_DELAY_MS)) {
+            ewState = GREEN;
+            updateTrafficLightLEDs(ewState, nsState);
+            ewLastStateChangeTime = currentTime;
+            nsRequestActive = false; // Reset the request as EW is now green
+            Serial.println("Transition: EW_RED -> EW_GREEN. NS request reset.");
+        }
+    }
+
+    if (nsState == RED) {
+        if (nsRequestActive && ewState == RED && (currentTime - nsLastStateChangeTime >= RED_LIGHT_DELAY_MS)) {
+            nsState = GREEN;
+            updateTrafficLightLEDs(ewState, nsState);
+            nsLastStateChangeTime = currentTime;
+            Serial.println("Transition: NS_RED -> NS_GREEN");
+        }
+    } else if (nsState == GREEN) {
+        if (currentTime - nsLastStateChangeTime >= GREEN_LIGHT_DELAY_MS) {
+            nsState = YELLOW;
+            updateTrafficLightLEDs(ewState, nsState);
+            nsLastStateChangeTime = currentTime;
+            Serial.println("Transition: NS_GREEN -> NS_YELLOW");
+        }
+    } else if (nsState == YELLOW) {
+        if (currentTime - nsLastStateChangeTime >= YELLOW_LIGHT_DELAY_MS) {
+            nsState = RED;
+            updateTrafficLightLEDs(ewState, nsState);
+            nsLastStateChangeTime = currentTime;
+            Serial.println("Transition: NS_YELLOW -> NS_RED");
+        }
+    }
+
+    static TrafficLightState lastPrintedEWState = (TrafficLightState)-1; 
+    static TrafficLightState lastPrintedNSState = (TrafficLightState)-1;
+    static unsigned long lastPrintTime = 0;
+    const unsigned long PRINT_INTERVAL_MS = 1000; 
+    if (ewState != lastPrintedEWState || nsState != lastPrintedNSState || (currentTime - lastPrintTime >= PRINT_INTERVAL_MS)) {
+        Serial.print("Current State: EW_");
+        if (ewState == GREEN) Serial.print("GREEN");
+        else if (ewState == YELLOW) Serial.print("YELLOW");
+        else Serial.print("RED");
+
+        Serial.print(", NS_");
+        if (nsState == GREEN) Serial.println("GREEN");
+        else if (nsState == YELLOW) Serial.println("YELLOW");
+        else Serial.println("RED");
+
+        lastPrintedEWState = ewState;
+        lastPrintedNSState = nsState;
+        lastPrintTime = currentTime;
+    }
+}
+
+
+//lab 6.1
+
+// const int LED_PIN = 2;
+// const int POT_PIN = A0;
+
+// enum LedState {
+//   OFF_STATE,
+//   ON_STATE
+// };
+
+// LedState currentState = OFF_STATE;
+
+// Led led(LED_PIN);
+// Potentiometer potentiometer(POT_PIN);
+
+// const int POT_THRESHOLD = 512;
+
+// bool prevPotThresholdExceeded = false;
+// unsigned long lastStateChangeTime = 0;
+// const long CHANGE_DEBOUNCE_DELAY = 100;
+
+// void setup() {
+//   Serial.begin(9600);
+//   lcd.init();
+//   lcd.clear();
+//   led.off();
+//   potentiometer.begin();
+//   Serial.println("Initial State: OFF");
+// }
+
+// void loop() {
+//   int currentPotValue = potentiometer.readRaw();
+//   bool currentPotThresholdExceeded = (currentPotValue >= POT_THRESHOLD);
+
+//   if (currentPotThresholdExceeded && !prevPotThresholdExceeded) {
+//     if ((millis() - lastStateChangeTime) > CHANGE_DEBOUNCE_DELAY) {
+//       lastStateChangeTime = millis();
+
+//       switch (currentState) {
+//         case OFF_STATE:
+//           currentState = ON_STATE;
+//           led.on();
+//           Serial.println("Transition: OFF -> ON");
+//           Serial.println("Current State: ON");
+//           printf("Current State: ON");
+//           break;
+
+//         case ON_STATE:
+//           currentState = OFF_STATE;
+//           led.off();
+//           Serial.println("Transition: ON -> OFF");
+//           Serial.println("Current State: OFF");
+//           printf("Current State: OFF");
+
+//           break;
+//       }
+//     }
+//   }
+//   prevPotThresholdExceeded = currentPotThresholdExceeded;
+// }
+
+
+// Relay relay(7);
+// Humiture dht(6);
+// Potentiometer potentiometer(2);
 // Motor motor(6,5);
 
 // SaltPepperFilter temp_filter;
 // WeightedMovingAverageFilter temp_filter_second_stage;
-int hyster = 1;
+// int hyster = 1;
 
 
-float hum;
-float temp;
-float pot;
+// float hum;
+// float temp;
+// float pot;
 
 // GyverPID setup: (Kp, Ki, Kd, direction = DIRECT)
-GyverPID pid(2.0, 5.0, 1.0);
+// GyverPID pid(2.0, 5.0, 1.0);
 
-double input, setpoint, output;
+// double input, setpoint, output;
 
 
-void setup() {
-  Serial.begin(9600);
-  Serial.println("Hello Humiture");
-  lcd.init();
-  lcd.clear();
-  potentiometer.begin();
-}
+// void setup() {
+//   Serial.begin(9600);
+//   Serial.println("Hello Humiture");
+//   lcd.init();
+//   lcd.clear();
+//   potentiometer.begin();
+// }
 
 
 // lab 5.2
@@ -57,7 +286,7 @@ void setup() {
 //   pid.input = temp;
 //   pid.setpoint = pot;
 
-//   float pidOutput = pid.getResult();  // calculate PID output
+//   float pidOutput = pid.getResult();
 
 //   if (pidOutput > 128) {
 //     relay.on();
@@ -76,6 +305,13 @@ void setup() {
 //   Serial.println();
 
 //   printf("Temp:%sC\nPot:%sC", tempStr, potStr);
+
+
+//   Serial.print(temp);        
+//   Serial.print("\t");      
+//   Serial.print(pot);       
+//   Serial.print("\t");      
+//   Serial.println(pidOutput); 
 
 
 //   delay(1000);
