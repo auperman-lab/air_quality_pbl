@@ -1,0 +1,23 @@
+{
+    "name": "AirQualitySensor",
+    "version": "1.0.0",
+    "description": "Library for ENS160 Air Quality Sensor and AHT21 Temperature/Humidity Sensor using alternative libraries (ENS160) and Adafruit (AHT21).",
+    "keywords": "ENS160, AHT21, Air Quality, Temperature, Humidity, I2C, Wemos D1 Mini",
+    "authors": [
+        {
+            "name": "Auperman-Lab",
+            "url": "Auperman-Lab"
+        }
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/AirQualitySensor.git"
+    },
+    "frameworks": "arduino",
+    "platforms": "*",
+    "dependencies": {
+        "sciosense/ScioSense_ENS16x@^2.0.3" ,
+        "adafruit/Adafruit Unified Sensor@^1.1.9",
+        "adafruit/Adafruit AHTX0@^2.0.3" 
+    }
+}
