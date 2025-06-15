@@ -1,11 +1,19 @@
 #pragma once
-#include <cstdint>
 
-// These are now defined via build_flags (-D)
-extern const char *BLYNK_AUTH;
-extern const char *WIFI_SSID;
-extern const char *WIFI_PASS;
-extern const char *NOTIFY_EMAIL;
+// These will be provided by build_flags
+#ifndef WIFI_SSID
+#error "WIFI_SSID not defined"
+#endif
+
+#ifndef WIFI_PASS
+#error "WIFI_PASS not defined"
+#endif
+
+#ifndef NOTIFY_EMAIL
+#error "NOTIFY_EMAIL not defined"
+#endif
+
+// Use macros directly when calling WiFi.begin()
 
 constexpr float TIME_OPEN_MAIN = 45.0f;
 constexpr float TIME_OPEN_HANDLE = 15.0f;
